@@ -57,7 +57,7 @@ namespace Neo4jClient.Test.Cypher
             Assert.AreEqual("START n=node:nodes(Name = {p0})\r\nRETURN n", query.QueryText);
             Assert.AreEqual("A", query.QueryParameters["p0"]);
         }
-        
+
         public class Foo
         {
             public string Name { get; set; }
