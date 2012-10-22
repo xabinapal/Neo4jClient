@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq.Expressions;
 
 namespace Neo4jClient.Cypher
 {
@@ -46,6 +48,19 @@ namespace Neo4jClient.Cypher
             var newBuilder = new CypherQueryBuilder();
             newBuilder.AddStartBitWithNodeIndexLookup(identity, indexName, key, value);
             return new CypherFluentQuery(Client, newBuilder);
+        }
+
+        public ICypherFluentQueryStarted StartWithNodeIndexLookup<T>(string identity, string indexName, Expression<Func<T, object>> expression)
+        {
+            var newBuilder = new CypherQueryBuilder();
+            var pair = DeriveKeyValueFromEqualityComparisonExpression(expression);
+            newBuilder.AddStartBitWithNodeIndexLookup(identity, indexName, pair.Key, pair.Value);
+            return new CypherFluentQuery(Client, newBuilder);
+        }
+
+        static KeyValuePair<string, object> DeriveKeyValueFromEqualityComparisonExpression<T>(Expression<Func<T, object>> expression)
+        {
+            throw new NotImplementedException();
         }
 
         public ICypherFluentQueryStarted StartWithNodeIndexLookup(string identity, string indexName, string parameter)
