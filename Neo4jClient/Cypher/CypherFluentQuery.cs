@@ -63,6 +63,19 @@ namespace Neo4jClient.Cypher
             throw new NotImplementedException();
         }
 
+        public ICypherFluentQueryStarted StartWithNodeIndexLookup(string identity, string indexName, string parameter)
+        {
+            var newBuilder = new CypherQueryBuilder();
+            newBuilder.AddStartBitWithNodeIndexLookup(identity, indexName, parameter);
+            return new CypherFluentQuery(Client, newBuilder);
+        }
+
+        public ICypherFluentQueryStarted AddStartPointWithNodeIndexLookup(string identity, string indexName, string key, object value)
+        {
+            var newBuilder = Builder.AddStartBitWithNodeIndexLookup(identity, indexName, key, value);
+            return new CypherFluentQuery(Client, newBuilder);
+        }
+
         public ICypherFluentQueryStarted AddStartPoint(string identity, params NodeReference[] nodeReferences)
         {
             var newBuilder = Builder.AddStartBit(identity, nodeReferences);
@@ -116,6 +129,11 @@ namespace Neo4jClient.Cypher
         public CypherQuery Query
         {
             get { return Builder.ToQuery(); }
+        }
+
+        public void ExecuteWithoutResults()
+        {
+            Client.ExecuteCypher(Query);
         }
 
         IGraphClient IAttachedReference.Client

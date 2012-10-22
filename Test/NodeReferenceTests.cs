@@ -1,4 +1,5 @@
 ﻿using System;
+using NSubstitute;
 using NUnit.Framework;
 using Neo4jClient.Gremlin;
 
@@ -8,17 +9,32 @@ namespace Neo4jClient.Test
     public class NodeReferenceTests
     {
         [Test]
-        public void ShouldImplicitlyCastFromInt()
+        public void ShouldImplicitlyCastFromIntToUntypedReference()
         {
             NodeReference nodeReference = 3;
             Assert.AreEqual(3, nodeReference.Id);
         }
 
         [Test]
-        public void ShouldExplicitlyCastFromInt()
+        public void ShouldImplicitlyCastFromIntToTypedReference()
+        {
+            NodeReference<object> nodeReference = 3;
+            Assert.AreEqual(3, nodeReference.Id);
+        }
+
+        [Test]
+        public void ShouldExplicitlyCastFromIntToUntypedReference()
         {
             var nodeReference = (NodeReference)3;
             Assert.IsInstanceOf(typeof(NodeReference), nodeReference);
+            Assert.AreEqual(3, nodeReference.Id);
+        }
+
+        [Test]
+        public void ShouldExplicitlyCastFromIntToTypedReference()
+        {
+            var nodeReference = (NodeReference<object>)3;
+            Assert.IsInstanceOf(typeof(NodeReference<object>), nodeReference);
             Assert.AreEqual(3, nodeReference.Id);
         }
 
@@ -136,6 +152,16 @@ namespace Neo4jClient.Test
             var reference = new NodeReference(123);
             var query = ((IGremlinQuery) reference);
             Assert.AreEqual("g.v(p0)", query.QueryText);
+            Assert.AreEqual(123, query.QueryParameters["p0"]);
+        }
+
+        [Test]
+        public void CypherShouldStartQueryFromCurrentNodeReference()
+        {
+            var graphClient = Substitute.For<IRawGraphClient>();
+            var reference = new NodeReference(123, graphClient);
+            var query = reference.StartCypher("foo").Query;
+            Assert.AreEqual("START foo=node({p0})", query.QueryText);
             Assert.AreEqual(123, query.QueryParameters["p0"]);
         }
     }
