@@ -64,14 +64,17 @@
   <ItemGroup>
     <Compile Include="ApiModels\GremlinTableCapResponseTests.cs" />
     <Compile Include="ApiModels\RootApiResponseTests.cs" />
+    <Compile Include="Cypher\CypherFluentQueryWithTests.cs" />
+    <Compile Include="Cypher\CypherFluentQuerySkipTests.cs" />
+    <Compile Include="Cypher\CypherFluentQueryLimitTests.cs" />
     <Compile Include="Cypher\CypherFluentQueryDeleteTests.cs" />
     <Compile Include="Cypher\CypherFluentQueryReturnTests.cs" />
     <Compile Include="Cypher\CypherFluentQuerySetTests.cs" />
     <Compile Include="Cypher\CypherFluentQueryStartTests.cs" />
     <Compile Include="Cypher\CypherFluentQueryCreateUniqueTests.cs" />
     <Compile Include="Cypher\CypherFluentQueryRelateTests.cs" />
-    <Compile Include="Cypher\CypherQueryBuilderTests.cs" />
     <Compile Include="Cypher\CypherWhereExpressionBuilderTests.cs" />
+    <Compile Include="Cypher\QueryWriterTests.cs" />
     <Compile Include="Deserializer\CypherJsonDeserializerTests.cs" />
     <Compile Include="Deserializer\CustomJsonDeserializerTests.cs" />
     <Compile Include="Domain\Product.cs" />

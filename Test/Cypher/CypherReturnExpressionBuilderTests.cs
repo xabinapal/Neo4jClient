@@ -162,7 +162,7 @@ namespace Neo4jClient.Test.Cypher
             // RETURN collect(a)
 
             Expression<Func<ICypherResultItem, object>> expression =
-                (a) => new
+                a => new
                 {
                     Foo = a.CollectAs<Foo>()
                 };
@@ -170,6 +170,25 @@ namespace Neo4jClient.Test.Cypher
             var text = CypherReturnExpressionBuilder.BuildText(expression);
 
             Assert.AreEqual("collect(a) AS Foo", text);
+        }
+
+        [Test]
+        public void ReturnCollectedDistinctNodesInColumn()
+        {
+            // http://docs.neo4j.org/chunked/1.9.M05/query-aggregation.html#aggregation-distinct
+            // START a=node(1)
+            // MATCH a-->b
+            // RETURN collect(distinct b.eyes)
+
+            Expression<Func<ICypherResultItem, object>> expression =
+                a => new
+                {
+                    Foo = a.CollectAsDistinct<Foo>()
+                };
+
+            var text = CypherReturnExpressionBuilder.BuildText(expression);
+
+            Assert.AreEqual("collect(distinct a) AS Foo", text);
         }
 
         public class Foo
