@@ -145,17 +145,26 @@ namespace Neo4jClient.Deserializer
                 return list;
             }
 
-            if (genericTypeDef == typeof(Dictionary<,>))
+            var dictionaryInterfaces = propertyType
+                .GetInterfaces()
+                .Where(i => i.IsGenericType)
+                .Where(i => i.GetGenericTypeDefinition() == typeof (IDictionary<,>))
+                .ToArray();
+            if (dictionaryInterfaces.Any())
             {
-                var keyType = propertyType.GetGenericArguments()[0];
+                var dictionaryInterface = dictionaryInterfaces.Single();
 
                 // only supports Dict<string, T>()
+                var keyType = dictionaryInterface.GetGenericArguments()[0];
                 if (keyType != typeof (string))
-                {
-                    throw new NotSupportedException("Value coersion only supports dictionaries with a key of type System.String");
-                }
+                    throw new NotSupportedException(string.Format(
+                        "Value coersion only supports dictionaries with a key of type {0}. Yours has a key type of {1}.",
+                        typeof(string).FullName,
+                        keyType.FullName));
 
-                var dict = BuildDictionary(propertyType, value.Children(), culture, typeMappings, nestingLevel + 1);
+                var valueType = dictionaryInterface.GetGenericArguments()[1];
+
+                var dict = BuildDictionary(propertyType, valueType, value.Children(), culture, typeMappings, nestingLevel + 1);
                 return dict;
             }
 
@@ -189,7 +198,8 @@ namespace Neo4jClient.Deserializer
                 var genericTypeDef = type.GetGenericTypeDefinition();
                 if (genericTypeDef == typeof (Dictionary<,>))
                 {
-                    instance = BuildDictionary(type, element.Children(), culture, typeMappings, nestingLevel + 1);
+                    var valueType = type.GetGenericArguments()[1];
+                    instance = BuildDictionary(type, valueType, element.Children(), culture, typeMappings, nestingLevel + 1);
                 }
                 else if (genericTypeDef == typeof (List<>))
                 {
@@ -291,15 +301,22 @@ namespace Neo4jClient.Deserializer
             }
         }
 
-        public static IDictionary BuildDictionary(Type type, JEnumerable<JToken> elements, CultureInfo culture, IEnumerable<TypeMapping> typeMappings, int nestingLevel)
+        public static IDictionary BuildDictionary(
+            Type type,
+            Type valueType,
+            JEnumerable<JToken> elements,
+            CultureInfo culture,
+            IEnumerable<TypeMapping> typeMappings,
+            int nestingLevel)
         {
             typeMappings = typeMappings.ToArray();
             var dict = (IDictionary)Activator.CreateInstance(type);
-            var valueType = type.GetGenericArguments()[1];
             foreach (JProperty child in elements)
             {
                 var key = child.Name;
-                var item = CreateAndMap(valueType, child.Value, culture, typeMappings, nestingLevel + 1);
+                var item = valueType == typeof(object)
+                    ? child.Value.ToObject<object>()
+                    : CreateAndMap(valueType, child.Value, culture, typeMappings, nestingLevel + 1);
                 dict.Add(key, item);
             }
 
