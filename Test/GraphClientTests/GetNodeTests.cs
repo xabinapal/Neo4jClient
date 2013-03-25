@@ -245,6 +245,7 @@ namespace Neo4jClient.Test.GraphClientTests
                 Assert.AreEqual("baz", node.Data["Baz"]);
             }
         }
+
         public class TestNode
         {
             public string Foo { get; set; }
