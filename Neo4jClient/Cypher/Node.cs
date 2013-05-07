@@ -1,4 +1,8 @@
-﻿namespace Neo4jClient.Cypher
+﻿using System;
+using System.Collections.Generic;
+using System.Linq.Expressions;
+
+namespace Neo4jClient.Cypher
 {
     public static class Node
     {
@@ -13,6 +17,25 @@
                     indexName,
                     propertyName,
                     createParameterCallback(value)));
+        }
+
+        /// <summary>
+        /// Used for Cypher <code>START</code> clauses, like <code>Start(new { foo = Node.ByIndexLookup(…) })</code>
+        /// </summary>
+        public static StartBit ByIndexLookup<T>(string indexName, Expression<Func<T, object>> expression)
+        {
+            var pair = DeriveKeyValueFromEqualityComparisonExpression(expression);
+            return new StartBit(createParameterCallback =>
+                string.Format(
+                    "node:{0}({1} = {2})",
+                    indexName,
+                    pair.Key,
+                    createParameterCallback(pair.Value)));
+        }
+
+        static KeyValuePair<string, object> DeriveKeyValueFromEqualityComparisonExpression<T>(Expression<Func<T, object>> expression)
+        {
+            throw new NotImplementedException();
         }
 
         /// <summary>
