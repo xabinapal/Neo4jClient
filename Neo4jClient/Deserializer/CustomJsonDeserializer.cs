@@ -21,23 +21,22 @@ namespace Neo4jClient.Deserializer
 
             var target = new T();
 
+            var targetType = target.GetType();
+
             if (target is IList)
             {
-                var objType = target.GetType();
                 var json = JToken.ReadFrom(reader);
-                target = (T)CommonDeserializerMethods.BuildList(objType, json.Root.Children(), culture, new TypeMapping[0], 0);
-            }
-            else if (target is IDictionary)
-            {
-                var root = JToken.ReadFrom(reader).Root;
-                target = (T)CommonDeserializerMethods.BuildDictionary(target.GetType(), root.Children(), culture, new TypeMapping[0], 0);
-            }
-            else
-            {
-                var root = JToken.ReadFrom(reader).Root;
-                CommonDeserializerMethods.Map(target, root, culture, new TypeMapping[0], 0);
+                return (T)CommonDeserializerMethods.BuildList(targetType, json.Root.Children(), culture, new TypeMapping[0], 0);
             }
 
+            var root = JToken.ReadFrom(reader).Root;
+            if (target is IDictionary)
+            {
+                var valueType = targetType.GetGenericArguments()[1];
+                return (T)CommonDeserializerMethods.BuildDictionary(targetType, valueType, root.Children(), culture, new TypeMapping[0], 0);
+            }
+
+            CommonDeserializerMethods.Map(target, root, culture, new TypeMapping[0], 0);
             return target;
         }
     }
