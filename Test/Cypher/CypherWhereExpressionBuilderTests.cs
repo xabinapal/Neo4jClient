@@ -14,9 +14,16 @@ namespace Neo4jClient.Test.Cypher
         {
             public int Bar { get; set; }
             public int? NullableBar { get; set; }
+            public SomeEnum Enum { get; set; }
         }
         // ReSharper restore ClassNeverInstantiated.Local
         // ReSharper restore UnusedAutoPropertyAccessor.Local
+
+        public enum SomeEnum
+        {
+            Abc,
+            Def
+        }
 
         // This must be a public static field, that's not a constant
         public static int BazField = 123;
@@ -163,6 +170,20 @@ namespace Neo4jClient.Test.Cypher
             var result = CypherWhereExpressionBuilder.BuildText(expression, v => CreateParameter(parameters, v));
 
             Assert.AreEqual("(p1.Bar = p2.Bar)", result);
+        }
+
+        [Test]
+        [Description("https://bitbucket.org/Readify/neo4jclient/issue/82/enumvalueconverter-and-andwhere")]
+        public void ShouldCompareEnumsByNames()
+        {
+            var parameters = new Dictionary<string, object>();
+            Expression<Func<Foo, bool>> expression =
+                p1 => p1.Enum == SomeEnum.Def;
+
+            var result = CypherWhereExpressionBuilder.BuildText(expression, v => CreateParameter(parameters, v));
+
+            Assert.AreEqual("(p1.Enum = {p0})", result);
+            Assert.AreEqual("Def", parameters["p0"]);
         }
 
         static string CreateParameter(IDictionary<string, object> parameters, object paramValue)
