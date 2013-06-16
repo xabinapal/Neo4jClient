@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using Neo4jClient.Cypher;
 
@@ -33,6 +34,19 @@ namespace Neo4jClient.Test.Cypher
             Assert.AreEqual("n1=node({p0})", cypher.QueryText);
             Assert.AreEqual(1, cypher.QueryParameters.Count);
             Assert.AreEqual(123, cypher.QueryParameters["p0"]);
+        }
+
+        [Test]
+        public void EnumerableOfNodes()
+        {
+            var cypher = ToCypher(new
+            {
+                n1 = new[] {123, 456}.Select(id => new Node<object>(new object(), id, null))
+            });
+
+            Assert.AreEqual("n1=node({p0})", cypher.QueryText);
+            Assert.AreEqual(1, cypher.QueryParameters.Count);
+            Assert.AreEqual(new[] {123, 456}, cypher.QueryParameters["p0"]);
         }
 
         [Test]
@@ -79,6 +93,34 @@ namespace Neo4jClient.Test.Cypher
         }
 
         [Test]
+        [Description("http://docs.neo4j.org/chunked/2.0.0-M01/query-start.html#start-multiple-nodes-by-id")]
+        public void EnumerableOfNodeReferences()
+        {
+            var cypher = ToCypher(new
+            {
+                n1 = new[] { 1, 2 }.Select(id => (NodeReference)id)
+            });
+
+            Assert.AreEqual("n1=node({p0})", cypher.QueryText);
+            Assert.AreEqual(1, cypher.QueryParameters.Count);
+            Assert.AreEqual(new[] { 1, 2 }, cypher.QueryParameters["p0"]);
+        }
+
+        [Test]
+        [Description("http://docs.neo4j.org/chunked/2.0.0-M01/query-start.html#start-multiple-nodes-by-id")]
+        public void EnumerableOfTypedNodeReferences()
+        {
+            var cypher = ToCypher(new
+            {
+                n1 = new[] { 1, 2 }.Select(id => (NodeReference<object>)id)
+            });
+
+            Assert.AreEqual("n1=node({p0})", cypher.QueryText);
+            Assert.AreEqual(1, cypher.QueryParameters.Count);
+            Assert.AreEqual(new[] { 1, 2 }, cypher.QueryParameters["p0"]);
+        }
+
+        [Test]
         public void SingleRelationshipReference()
         {
             var cypher = ToCypher(new
@@ -102,6 +144,19 @@ namespace Neo4jClient.Test.Cypher
             Assert.AreEqual("r1=relationship({p0})", cypher.QueryText);
             Assert.AreEqual(1, cypher.QueryParameters.Count);
             Assert.AreEqual(new[] {1, 2}, cypher.QueryParameters["p0"]);
+        }
+
+        [Test]
+        public void EnumerableOfRelationshipReferences()
+        {
+            var cypher = ToCypher(new
+            {
+                r1 = new[] { 1, 2 }.Select(id => (RelationshipReference)id)
+            });
+
+            Assert.AreEqual("r1=relationship({p0})", cypher.QueryText);
+            Assert.AreEqual(1, cypher.QueryParameters.Count);
+            Assert.AreEqual(new[] { 1, 2 }, cypher.QueryParameters["p0"]);
         }
 
         [Test]

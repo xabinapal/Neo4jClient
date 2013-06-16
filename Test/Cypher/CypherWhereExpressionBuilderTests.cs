@@ -15,6 +15,7 @@ namespace Neo4jClient.Test.Cypher
             public int Bar { get; set; }
             public int? NullableBar { get; set; }
             public SomeEnum Enum { get; set; }
+            public bool SomeBool { get; set; }
         }
         // ReSharper restore ClassNeverInstantiated.Local
         // ReSharper restore UnusedAutoPropertyAccessor.Local
@@ -184,6 +185,33 @@ namespace Neo4jClient.Test.Cypher
 
             Assert.AreEqual("(p1.Enum = {p0})", result);
             Assert.AreEqual("Def", parameters["p0"]);
+        }
+
+        [Description("https://bitbucket.org/Readify/neo4jclient/issue/99/throw-error-when-unary-expressions-are")]
+        public void ThrowNotSupportedExceptionForMemberAccessExpression()
+        {
+            // Where<FooData>(n => n.Bar)
+
+            var parameters = new Dictionary<string, object>();
+            Expression<Func<Foo, bool>> expression =
+                p1 => p1.SomeBool;
+
+            Assert.Throws<NotSupportedException>(() =>
+                CypherWhereExpressionBuilder.BuildText(expression, v => CreateParameter(parameters, v)));
+        }
+
+        [Test]
+        [Description("https://bitbucket.org/Readify/neo4jclient/issue/99/throw-error-when-unary-expressions-are")]
+        public void ThrowNotSupportedExceptionForUnaryNotExpression()
+        {
+            // Where<FooData>(n => !n.Bar)
+
+            var parameters = new Dictionary<string, object>();
+            Expression<Func<Foo, bool>> expression =
+                p1 => !p1.SomeBool;
+
+            Assert.Throws<NotSupportedException>(() =>
+                CypherWhereExpressionBuilder.BuildText(expression, v => CreateParameter(parameters, v)));
         }
 
         static string CreateParameter(IDictionary<string, object> parameters, object paramValue)

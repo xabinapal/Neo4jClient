@@ -5,7 +5,7 @@ using System.Text;
 
 namespace Neo4jClient.Cypher
 {
-    public class CypherWhereExpressionVisitor : ExpressionVisitor
+    internal class CypherWhereExpressionVisitor : ExpressionVisitor
     {
         const string NotEqual = " <> ";
         const string Equal = " = ";
@@ -201,6 +201,14 @@ namespace Neo4jClient.Cypher
 
             var valueWrappedInParameter = createParameterCallback(value);
             TextOutput.Append(valueWrappedInParameter);
+        }
+
+        protected override Expression VisitUnary(UnaryExpression node)
+        {
+            if (node.NodeType == ExpressionType.Convert)
+                return base.VisitUnary(node);
+
+            throw new NotSupportedException("Unary expressions, like Where(f => !f.Foo), are not supported because these become ambiguous between C# and Cypher based on how Neo4j handles null values. Use a comparison instead, like Where(f => f.Foo == false).");
         }
 
         static object ParseValueFromExpression(Expression expression)
