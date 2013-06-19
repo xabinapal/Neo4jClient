@@ -14,6 +14,7 @@ namespace Neo4jClient.Test.Cypher
         {
             public int Bar { get; set; }
             public int? NullableBar { get; set; }
+            public int? AnotherNullableBar { get; set; }
             public bool SomeBool { get; set; }
         }
         // ReSharper restore ClassNeverInstantiated.Local
@@ -237,6 +238,150 @@ namespace Neo4jClient.Test.Cypher
 
             Assert.AreEqual("(foo.NullableBar! <= {p0})", result);
             Assert.AreEqual(123, parameters["p0"]);
+        }
+
+        [Test]
+        [Description("https://bitbucket.org/Readify/neo4jclient/issue/105")]
+        public void EvaluateFalseWhenComparingEquilityOfMissingNullablePropertyWithAnotherNodeProperty()
+        {
+            var parameters = new Dictionary<string, object>();
+            Expression<Func<Foo, bool>> expression = foo => foo.NullableBar == foo.Bar;
+
+            var result = CypherWhereExpressionBuilder.BuildText(expression, v => CreateParameter(parameters, v));
+
+            Assert.AreEqual("(foo.NullableBar! = foo.bar)", result);
+        }
+
+        [Test]
+        [Description("https://bitbucket.org/Readify/neo4jclient/issue/105")]
+        public void EvaluateFalseWhenComparingInequilityOfMissingNullablePropertyWithAnotherNodeProperty()
+        {
+            var parameters = new Dictionary<string, object>();
+            Expression<Func<Foo, bool>> expression = foo => foo.NullableBar != foo.Bar;
+
+            var result = CypherWhereExpressionBuilder.BuildText(expression, v => CreateParameter(parameters, v));
+
+            Assert.AreEqual("(foo.NullableBar? = foo.bar)", result);
+        }
+
+        [Test]
+        [Description("https://bitbucket.org/Readify/neo4jclient/issue/105")]
+        public void EvaluateFalseWhenComparingMissingNullablePropertyGreaterThanAnotherNodeProperty()
+        {
+            var parameters = new Dictionary<string, object>();
+            Expression<Func<Foo, bool>> expression = foo => foo.NullableBar > foo.Bar;
+
+            var result = CypherWhereExpressionBuilder.BuildText(expression, v => CreateParameter(parameters, v));
+
+            Assert.AreEqual("(foo.NullableBar! > foo.bar)", result);
+        }
+
+        [Test]
+        [Description("https://bitbucket.org/Readify/neo4jclient/issue/105")]
+        public void EvaluateFalseWhenComparingMissingNullablePropertyGreaterThanOrEqualToAnotherNodeProperty()
+        {
+            var parameters = new Dictionary<string, object>();
+            Expression<Func<Foo, bool>> expression = foo => foo.NullableBar >= foo.Bar;
+
+            var result = CypherWhereExpressionBuilder.BuildText(expression, v => CreateParameter(parameters, v));
+
+            Assert.AreEqual("(foo.NullableBar! >= foo.bar)", result);
+        }
+
+        [Test]
+        [Description("https://bitbucket.org/Readify/neo4jclient/issue/105")]
+        public void EvaluateFalseWhenComparingMissingNullablePropertyLessThanAnotherNodeProperty()
+        {
+            var parameters = new Dictionary<string, object>();
+            Expression<Func<Foo, bool>> expression = foo => foo.NullableBar < foo.Bar;
+
+            var result = CypherWhereExpressionBuilder.BuildText(expression, v => CreateParameter(parameters, v));
+
+            Assert.AreEqual("(foo.NullableBar! < foo.bar)", result);
+        }
+
+        [Test]
+        [Description("https://bitbucket.org/Readify/neo4jclient/issue/105")]
+        public void EvaluateFalseWhenComparingMissingNullablePropertyLessThanOrEqualToAnotherNodeProperty()
+        {
+            var parameters = new Dictionary<string, object>();
+            Expression<Func<Foo, bool>> expression = foo => foo.NullableBar <= foo.Bar;
+
+            var result = CypherWhereExpressionBuilder.BuildText(expression, v => CreateParameter(parameters, v));
+
+            Assert.AreEqual("(foo.NullableBar! <= foo.bar)", result);
+        }
+
+        [Test]
+        [Description("https://bitbucket.org/Readify/neo4jclient/issue/105")]
+        public void EvaluateFalseWhenComparingEquilityOfMissingNullablePropertyWithAnotherNullableNodeProperty()
+        {
+            var parameters = new Dictionary<string, object>();
+            Expression<Func<Foo, bool>> expression = foo => foo.NullableBar == foo.AnotherNullableBar;
+
+            var result = CypherWhereExpressionBuilder.BuildText(expression, v => CreateParameter(parameters, v));
+
+            Assert.AreEqual("(foo.NullableBar! = foo.AnotherNullableBar!)", result);
+        }
+
+        [Test]
+        [Description("https://bitbucket.org/Readify/neo4jclient/issue/105")]
+        public void EvaluateFalseWhenComparingInequilityOfMissingNullablePropertyWithAnotherNullableNodeProperty()
+        {
+            var parameters = new Dictionary<string, object>();
+            Expression<Func<Foo, bool>> expression = foo => foo.NullableBar != foo.AnotherNullableBar;
+
+            var result = CypherWhereExpressionBuilder.BuildText(expression, v => CreateParameter(parameters, v));
+
+            Assert.AreEqual("(foo.NullableBar? <> foo.AnotherNullableBar?)", result);
+        }
+
+        [Test]
+        [Description("https://bitbucket.org/Readify/neo4jclient/issue/105")]
+        public void EvaluateFalseWhenComparingMissingNullablePropertyGreaterThanAnotherNullableNodeProperty()
+        {
+            var parameters = new Dictionary<string, object>();
+            Expression<Func<Foo, bool>> expression = foo => foo.NullableBar > foo.AnotherNullableBar;
+
+            var result = CypherWhereExpressionBuilder.BuildText(expression, v => CreateParameter(parameters, v));
+
+            Assert.AreEqual("(foo.NullableBar! > foo.AnotherNullableBar!)", result);
+        }
+
+        [Test]
+        [Description("https://bitbucket.org/Readify/neo4jclient/issue/105")]
+        public void EvaluateFalseWhenComparingMissingNullablePropertyGreaterThanOrEqualToAnotherNullableNodeProperty()
+        {
+            var parameters = new Dictionary<string, object>();
+            Expression<Func<Foo, bool>> expression = foo => foo.NullableBar >= foo.AnotherNullableBar;
+
+            var result = CypherWhereExpressionBuilder.BuildText(expression, v => CreateParameter(parameters, v));
+
+            Assert.AreEqual("(foo.NullableBar! >= foo.AnotherNullableBar!)", result);
+        }
+
+        [Test]
+        [Description("https://bitbucket.org/Readify/neo4jclient/issue/105")]
+        public void EvaluateFalseWhenComparingMissingNullablePropertyLessThanAnotherNullableNodeProperty()
+        {
+            var parameters = new Dictionary<string, object>();
+            Expression<Func<Foo, bool>> expression = foo => foo.NullableBar < foo.AnotherNullableBar;
+
+            var result = CypherWhereExpressionBuilder.BuildText(expression, v => CreateParameter(parameters, v));
+
+            Assert.AreEqual("(foo.NullableBar! < foo.AnotherNullableBar!)", result);
+        }
+
+        [Test]
+        [Description("https://bitbucket.org/Readify/neo4jclient/issue/105")]
+        public void EvaluateFalseWhenComparingMissingNullablePropertyLessThanOrEqualToAnotherNullableNodeProperty()
+        {
+            var parameters = new Dictionary<string, object>();
+            Expression<Func<Foo, bool>> expression = foo => foo.NullableBar <= foo.AnotherNullableBar;
+
+            var result = CypherWhereExpressionBuilder.BuildText(expression, v => CreateParameter(parameters, v));
+
+            Assert.AreEqual("(foo.NullableBar! <= foo.AnotherNullableBar!)", result);
         }
 
         [Test]
