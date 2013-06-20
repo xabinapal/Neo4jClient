@@ -32,8 +32,8 @@ namespace Neo4jClient.Serialization
             return
                 objectType != typeOfString &&
                 !objectType.IsPrimitive &&
-                typeConverter.CanConvertTo(typeOfString)
-                && typeConverter.CanConvertFrom(typeOfString);
+                typeConverter.CanConvertTo(typeOfString) &&
+                typeConverter.CanConvertFrom(typeOfString);
         }
     }
 }
