@@ -238,5 +238,29 @@ namespace Neo4jClient.Test.Serialization
             // Assert
             Assert.AreEqual(expectedValue, result);
         }
+
+        public class TestNodeWithString
+        {
+            public string Bar { get; set; }
+        }
+
+        [Test]
+        [Description("https://bitbucket.org/Readify/neo4jclient/issue/113/encoding-issue-when-saving-node-with")]
+        public void ShouldNotLoseAccentCharacterInStringValues()
+        {
+            // Arrange
+            var testNode = new TestNodeWithString { Bar = "Deux-Sèvres" };
+            var serializer = new CustomJsonSerializer
+            {
+                NullHandling = NullValueHandling.Ignore,
+                JsonConverters = GraphClient.DefaultJsonConverters
+            };
+
+            // Act
+            var result = serializer.Serialize(testNode);
+
+            // Assert
+            Assert.AreEqual("{\r\n  \"Bar\": \"Deux-Sèvres\"\r\n}", result);
+        }
     }
 }
