@@ -50,6 +50,7 @@
     <Reference Include="System.Net.Http.WebRequest, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.Net.Http.2.0.20710.0\lib\net40\System.Net.Http.WebRequest.dll</HintPath>
     </Reference>
+    <Reference Include="System.Transactions" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -62,6 +63,7 @@
     <Compile Include="ApiModels\BatchStep.cs" />
     <Compile Include="ApiModels\BatchStepExtensions.cs" />
     <Compile Include="ApiModels\BatchStepResult.cs" />
+    <Compile Include="ApiModels\Cypher\CypherTransactionApiQuery.cs" />
     <Compile Include="ApiModels\NodeOrRelationshipApiResponse.cs" />
     <Compile Include="ApiModels\Cypher\CypherApiQuery.cs" />
     <Compile Include="ApiModels\Cypher\PathsResult.cs" />
@@ -70,6 +72,7 @@
     <Compile Include="ApiModels\Gremlin\GremlinTableCapResponse.cs" />
     <Compile Include="Cypher\All.cs" />
     <Compile Include="Cypher\CypherFluentQuery`With.cs" />
+    <Compile Include="Cypher\CypherTransactionManager.cs" />
     <Compile Include="Cypher\CypherWithExpressionBuilder.cs" />
     <Compile Include="Cypher\ICypherFluentQuery`Where.cs" />
     <Compile Include="Cypher\ICypherFluentQuery`With.cs" />

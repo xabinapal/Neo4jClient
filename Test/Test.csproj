@@ -56,6 +56,7 @@
     <Reference Include="System.Net.Http.WebRequest, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.Net.Http.2.0.20710.0\lib\net40\System.Net.Http.WebRequest.dll</HintPath>
     </Reference>
+    <Reference Include="System.Transactions" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -81,6 +82,7 @@
     <Compile Include="Cypher\CypherWhereExpressionBuilderTests.cs" />
     <Compile Include="Cypher\QueryWriterTests.cs" />
     <Compile Include="Cypher\StartBitFormatterTests.cs" />
+    <Compile Include="GraphClientTests\Cypher\TransactionsTests.cs" />
     <Compile Include="Serialization\CypherJsonDeserializerTests.cs" />
     <Compile Include="Serialization\CustomJsonDeserializerTests.cs" />
     <Compile Include="Domain\Product.cs" />

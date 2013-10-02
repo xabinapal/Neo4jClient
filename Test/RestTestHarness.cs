@@ -131,12 +131,18 @@ namespace Neo4jClient.Test
 
             var response = result.Value;
 
-            return new HttpResponseMessage
+            var responseMessage = new HttpResponseMessage
             {
                 StatusCode = response.StatusCode,
                 ReasonPhrase = response.StatusDescription,
                 Content = string.IsNullOrEmpty(response.Content) ? null : new StringContent(response.Content, null, response.ContentType)
             };
+
+            if (response.Headers != null)
+                foreach (var header in response.Headers)
+                    responseMessage.Headers.Add(header.Key, header.Value);
+
+            return responseMessage;
         }
 
         static bool IsJsonEquivalent(string lhs, string rhs)

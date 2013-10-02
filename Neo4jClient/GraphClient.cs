@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
@@ -11,6 +12,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
+using System.Transactions;
 using Neo4jClient.ApiModels;
 using Neo4jClient.ApiModels.Cypher;
 using Neo4jClient.ApiModels.Gremlin;
@@ -37,6 +39,9 @@ namespace Neo4jClient
         RootNode rootNode;
         bool jsonStreamingAvailable;
         readonly string userAgent;
+
+        internal readonly ConcurrentDictionary<string, CypherTransactionManager> ActiveCypherTransactions =
+            new ConcurrentDictionary<string, CypherTransactionManager>();
 
         public bool UseJsonStreamingIfAvailable { get; set; }
         
@@ -208,10 +213,10 @@ namespace Neo4jClient
             }
 
             if (RootApiResponse.Cypher != null)
-            {
-                RootApiResponse.Cypher =
-                    RootApiResponse.Cypher.Substring(baseUriLengthToTrim);
-            }
+                RootApiResponse.Cypher = RootApiResponse.Cypher.Substring(baseUriLengthToTrim);
+
+            if (RootApiResponse.Transaction != null)
+                RootApiResponse.Transaction = RootApiResponse.Transaction.Substring(baseUriLengthToTrim);
 
             rootNode = string.IsNullOrEmpty(RootApiResponse.ReferenceNode)
                 ? null
@@ -810,10 +815,32 @@ namespace Neo4jClient
             var stopwatch = new Stopwatch();
             stopwatch.Start();
 
-            SendHttpRequest(
-                HttpPostAsJson(RootApiResponse.Cypher, new CypherApiQuery(query)),
-                string.Format("The query was: {0}", query.QueryText),
-                HttpStatusCode.OK);
+            var currentTransaction = Transaction.Current;
+            if (currentTransaction != null)
+            {
+                if (RootApiResponse.Transaction == null)
+                    throw new NotSupportedException("You're attempting to execute Cypher within a .NET transaction, however the Neo4j server you are talking to does not support this capability. This is available from Neo4j 2.0 onwards.");
+
+                var localIdentifier = currentTransaction.TransactionInformation.LocalIdentifier;
+                var transactionManager = new CypherTransactionManager();
+                transactionManager.CompleteCallback = () => ActiveCypherTransactions.TryRemove(localIdentifier, out transactionManager);
+                ActiveCypherTransactions.TryAdd(localIdentifier, transactionManager);
+                currentTransaction.EnlistVolatile(transactionManager, EnlistmentOptions.None);
+
+                var transactionResponseMessage = SendHttpRequest(
+                    HttpPostAsJson(RootApiResponse.Transaction, new CypherTransactionApiQuery(query)),
+                    string.Format("The query was: {0}", query.QueryText),
+                    HttpStatusCode.Created);
+
+                transactionManager.Endpoint = transactionResponseMessage.Headers.Location;
+            }
+            else
+            {
+                SendHttpRequest(
+                    HttpPostAsJson(RootApiResponse.Cypher, new CypherApiQuery(query)),
+                    string.Format("The query was: {0}", query.QueryText),
+                    HttpStatusCode.OK);
+            }
 
             stopwatch.Stop();
             OnOperationCompleted(new OperationCompletedEventArgs

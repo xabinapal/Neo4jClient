@@ -1,4 +1,5 @@
-﻿using System.Net;
+﻿using System.Collections.Generic;
+using System.Net;
 
 namespace Neo4jClient.Test
 {
@@ -15,14 +16,19 @@ namespace Neo4jClient.Test
 
         public string ContentType { get; set; }
         public string Content { get; set; }
+        public Dictionary<string, string> Headers { get; set; }
 
-        public static MockResponse Json(HttpStatusCode statusCode, string json)
+        public static MockResponse Json(
+            HttpStatusCode statusCode,
+            string json,
+            Dictionary<string, string> headers = null)
         {
             return new MockResponse
             {
                 StatusCode = statusCode,
                 ContentType = "application/json",
-                Content = json
+                Content = json,
+                Headers = headers
             };
         }
 
@@ -36,6 +42,7 @@ namespace Neo4jClient.Test
                 'relationship_index' : 'http://foo/db/data/index/relationship',
                 'reference_node' : 'http://foo/db/data/node/123',
                 'neo4j_version' : '1.5.M02',
+                'transaction' : 'http://foo/db/data/transaction',
                 'extensions_info' : 'http://foo/db/data/ext',
                 'extensions' : {
                     'GremlinPlugin' : {

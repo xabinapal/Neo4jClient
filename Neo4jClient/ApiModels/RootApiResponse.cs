@@ -27,6 +27,9 @@ namespace Neo4jClient.ApiModels
         [JsonProperty("reference_node")]
         public string ReferenceNode { get; set; }
 
+        [JsonProperty("transaction")]
+        public string Transaction { get; set; }
+
         [JsonProperty("extensions_info")]
         public string ExtensionsInfo { get; set; }
 
