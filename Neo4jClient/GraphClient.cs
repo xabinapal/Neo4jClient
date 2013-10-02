@@ -23,7 +23,7 @@ using Newtonsoft.Json;
 
 namespace Neo4jClient
 {
-    public class GraphClient : IRawGraphClient
+    public class GraphClient : IRawGraphClient, ITransactionCoordinator
     {
         public static readonly JsonConverter[] DefaultJsonConverters =
         {
@@ -40,8 +40,8 @@ namespace Neo4jClient
         bool jsonStreamingAvailable;
         readonly string userAgent;
 
-        internal readonly ConcurrentDictionary<string, CypherTransactionManager> ActiveCypherTransactions =
-            new ConcurrentDictionary<string, CypherTransactionManager>();
+        internal readonly ConcurrentDictionary<string, CypherTransaction> ActiveCypherTransactions =
+            new ConcurrentDictionary<string, CypherTransaction>();
 
         public bool UseJsonStreamingIfAvailable { get; set; }
         
@@ -819,31 +819,26 @@ namespace Neo4jClient
             if (currentTransaction != null)
             {
                 var localIdentifier = currentTransaction.TransactionInformation.LocalIdentifier;
-                CypherTransactionManager transactionManager;
-                var cypherTransactionAlreadyEstablished = ActiveCypherTransactions.TryGetValue(localIdentifier, out transactionManager);
+                CypherTransaction cypherTransaction;
+                var cypherTransactionAlreadyEstablished = ActiveCypherTransactions.TryGetValue(localIdentifier, out cypherTransaction);
 
                 if (!cypherTransactionAlreadyEstablished)
                 {
                     if (RootApiResponse.Transaction == null)
                         throw new NotSupportedException("You're attempting to execute Cypher within a .NET transaction, however the Neo4j server you are talking to does not support this capability. This is available from Neo4j 2.0 onwards.");
 
-                    transactionManager = new CypherTransactionManager();
-                    transactionManager.CompleteCallback = () => ActiveCypherTransactions.TryRemove(localIdentifier, out transactionManager);
-                    ActiveCypherTransactions.TryAdd(localIdentifier, transactionManager);
-                    currentTransaction.EnlistVolatile(transactionManager, EnlistmentOptions.None);
-
                     var transactionResponseMessage = SendHttpRequest(
                         HttpPostAsJson(RootApiResponse.Transaction, new CypherTransactionApiQuery(query)),
-                        string.Format("The query was: {0}", query.QueryText),
+                        string.Format("Established new transaction for query: {0}", query.QueryText),
                         HttpStatusCode.Created);
 
-                    transactionManager.Endpoint = transactionResponseMessage.Headers.Location;
+                    RegisterTransaction(localIdentifier, transactionResponseMessage, currentTransaction);
                 }
                 else
                 {
                     SendHttpRequest(
-                        HttpPostAsJson(transactionManager.Endpoint.AbsoluteUri, new CypherTransactionApiQuery(query)),
-                        string.Format("The query was: {0}", query.QueryText),
+                        HttpPostAsJson(cypherTransaction.Endpoint.AbsoluteUri, new CypherTransactionApiQuery(query)),
+                        string.Format("In existing transaction {0}, ran query: {1}", cypherTransaction.Endpoint, query.QueryText),
                         HttpStatusCode.OK);
                 }
             }
@@ -862,6 +857,33 @@ namespace Neo4jClient
                 ResourcesReturned = 0,
                 TimeTaken = stopwatch.Elapsed
             });
+        }
+
+        void RegisterTransaction(
+            string localIdentifier,
+            HttpResponseMessage transactionResponseMessage,
+            Transaction currentTransaction)
+        {
+            var cypherTransaction = new CypherTransaction(this, localIdentifier)
+            {
+                Endpoint = transactionResponseMessage.Headers.Location
+            };
+            ActiveCypherTransactions.TryAdd(localIdentifier, cypherTransaction);
+            currentTransaction.EnlistVolatile(cypherTransaction, EnlistmentOptions.None);
+        }
+
+        void ReleaseTransaction(CypherTransaction transaction)
+        {
+            ActiveCypherTransactions.TryRemove(transaction.LocalIdentifier, out transaction);
+        }
+
+        void ITransactionCoordinator.RollbackTransaction(CypherTransaction transaction)
+        {
+            SendHttpRequest(
+                HttpDelete(transaction.Endpoint.AbsoluteUri),
+                string.Format("Rolled back transaction {0}", transaction.Endpoint),
+                HttpStatusCode.OK);
+            ReleaseTransaction(transaction);
         }
 
         public virtual IEnumerable<RelationshipInstance> ExecuteGetAllRelationshipsGremlin(string query, IDictionary<string, object> parameters)

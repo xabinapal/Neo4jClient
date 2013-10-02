@@ -72,11 +72,12 @@
     <Compile Include="ApiModels\Gremlin\GremlinTableCapResponse.cs" />
     <Compile Include="Cypher\All.cs" />
     <Compile Include="Cypher\CypherFluentQuery`With.cs" />
-    <Compile Include="Cypher\CypherTransactionManager.cs" />
+    <Compile Include="Cypher\CypherTransaction.cs" />
     <Compile Include="Cypher\CypherWithExpressionBuilder.cs" />
     <Compile Include="Cypher\ICypherFluentQuery`Where.cs" />
     <Compile Include="Cypher\ICypherFluentQuery`With.cs" />
     <Compile Include="Cypher\IFluentCypherResultItem.cs" />
+    <Compile Include="Cypher\ITransactionCoordinator.cs" />
     <Compile Include="Cypher\Relationship.cs" />
     <Compile Include="Cypher\CypherStartBitWithNodeIndexLookupWithSingleParameter.cs" />
     <Compile Include="Cypher\CypherStartBitWithNodeIndexLookup.cs" />

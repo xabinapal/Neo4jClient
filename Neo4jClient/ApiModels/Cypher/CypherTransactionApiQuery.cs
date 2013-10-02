@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using Neo4jClient.Cypher;
 using Newtonsoft.Json;
 
@@ -6,13 +7,23 @@ namespace Neo4jClient.ApiModels.Cypher
 {
     class CypherTransactionApiQuery
     {
-        readonly string queryText;
-        readonly IDictionary<string, object> queryParameters;
+        readonly IEnumerable<CypherTransactionStatement> statements;
 
-        public CypherTransactionApiQuery(CypherQuery query)
+        public CypherTransactionApiQuery(params CypherQuery[] queries)
         {
-            queryText = query.QueryText;
-            queryParameters = query.QueryParameters ?? new Dictionary<string, object>();
+            statements = queries
+                .Select(q => new CypherTransactionStatement
+                {
+                    Statement = q.QueryText,
+                    Parameters = q.QueryParameters
+                })
+                .ToArray();
+        }
+
+        [JsonProperty("statements")]
+        public IEnumerable<CypherTransactionStatement> Statements
+        {
+            get { return statements; }
         }
 
         public class CypherTransactionStatement
@@ -22,18 +33,6 @@ namespace Neo4jClient.ApiModels.Cypher
 
             [JsonProperty("parameters")]
             public IDictionary<string, object> Parameters;
-        }
-
-        [JsonProperty("statements")]
-        public IEnumerable<CypherTransactionStatement> Statements
-        {
-            get
-            {
-                return new[]
-                {
-                    new CypherTransactionStatement { Statement = queryText, Parameters = queryParameters }
-                };
-            }
         }
     }
 }

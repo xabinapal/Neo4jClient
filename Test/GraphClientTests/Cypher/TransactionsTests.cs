@@ -79,6 +79,13 @@ namespace Neo4jClient.Test.GraphClientTests.Cypher
                             { "Location", "http://foo/db/data/transaction/6" }
                         }
                     )
+                },
+                {
+                    MockRequest.Delete("/transaction/6"),
+                    MockResponse.Json(
+                        HttpStatusCode.OK,
+                        @"{ 'results':[], 'errors':[] }"
+                    )
                 }
             })
             {
@@ -147,6 +154,13 @@ namespace Neo4jClient.Test.GraphClientTests.Cypher
                             }
                         "
                     )
+                },
+                {
+                    MockRequest.Delete("/transaction/6"),
+                    MockResponse.Json(
+                        HttpStatusCode.OK,
+                        @"{ 'results':[], 'errors':[] }"
+                    )
                 }
             })
             {
@@ -156,6 +170,57 @@ namespace Neo4jClient.Test.GraphClientTests.Cypher
                 {
                     graphClient.ExecuteCypher(cypherQuery1);
                     graphClient.ExecuteCypher(cypherQuery2);
+                }
+            }
+        }
+
+        [Test]
+        public void ExecuteCypher_ShouldRollbackTransaction()
+        {
+            var cypherQuery = new CypherQuery("CYPHER", new Dictionary<string, object>(), CypherResultMode.Set);
+            var cypherApiQuery = new CypherTransactionApiQuery(cypherQuery);
+
+            using (var testHarness = new RestTestHarness
+            {
+                {
+                    MockRequest.PostObjectAsJson("/transaction", cypherApiQuery),
+                    MockResponse.Json(
+                        HttpStatusCode.Created,
+                        @"
+                            {
+                                'commit' : 'http://foo/db/data/transaction/6/commit',
+                                'results' : [
+                                    {
+                                        'columns' : [ 'n' ],
+                                        'data' : [ { 'row' : [ {'name':'My Node'} ] } ]
+                                    }
+                                ],
+                                'transaction' : {
+                                    'expires' : 'Tue, 10 Sep 2013 10:54:04 +0000'
+                                },
+                                'errors' : [ ]
+                            }
+                        ",
+                        new Dictionary<string, string>
+                        {
+                            { "Location", "http://foo/db/data/transaction/6" }
+                        }
+                    )
+                },
+                {
+                    MockRequest.Delete("/transaction/6"),
+                    MockResponse.Json(
+                        HttpStatusCode.OK,
+                        @"{ 'results':[], 'errors':[] }"
+                    )
+                }
+            })
+            {
+                var graphClient = testHarness.CreateAndConnectGraphClient();
+
+                using (var transaction = new TransactionScope())
+                {
+                    graphClient.ExecuteCypher(cypherQuery);
                 }
             }
         }
