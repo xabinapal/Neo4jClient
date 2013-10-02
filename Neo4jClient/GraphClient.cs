@@ -818,21 +818,34 @@ namespace Neo4jClient
             var currentTransaction = Transaction.Current;
             if (currentTransaction != null)
             {
-                if (RootApiResponse.Transaction == null)
-                    throw new NotSupportedException("You're attempting to execute Cypher within a .NET transaction, however the Neo4j server you are talking to does not support this capability. This is available from Neo4j 2.0 onwards.");
-
                 var localIdentifier = currentTransaction.TransactionInformation.LocalIdentifier;
-                var transactionManager = new CypherTransactionManager();
-                transactionManager.CompleteCallback = () => ActiveCypherTransactions.TryRemove(localIdentifier, out transactionManager);
-                ActiveCypherTransactions.TryAdd(localIdentifier, transactionManager);
-                currentTransaction.EnlistVolatile(transactionManager, EnlistmentOptions.None);
+                CypherTransactionManager transactionManager;
+                var cypherTransactionAlreadyEstablished = ActiveCypherTransactions.TryGetValue(localIdentifier, out transactionManager);
 
-                var transactionResponseMessage = SendHttpRequest(
-                    HttpPostAsJson(RootApiResponse.Transaction, new CypherTransactionApiQuery(query)),
-                    string.Format("The query was: {0}", query.QueryText),
-                    HttpStatusCode.Created);
+                if (!cypherTransactionAlreadyEstablished)
+                {
+                    if (RootApiResponse.Transaction == null)
+                        throw new NotSupportedException("You're attempting to execute Cypher within a .NET transaction, however the Neo4j server you are talking to does not support this capability. This is available from Neo4j 2.0 onwards.");
 
-                transactionManager.Endpoint = transactionResponseMessage.Headers.Location;
+                    transactionManager = new CypherTransactionManager();
+                    transactionManager.CompleteCallback = () => ActiveCypherTransactions.TryRemove(localIdentifier, out transactionManager);
+                    ActiveCypherTransactions.TryAdd(localIdentifier, transactionManager);
+                    currentTransaction.EnlistVolatile(transactionManager, EnlistmentOptions.None);
+
+                    var transactionResponseMessage = SendHttpRequest(
+                        HttpPostAsJson(RootApiResponse.Transaction, new CypherTransactionApiQuery(query)),
+                        string.Format("The query was: {0}", query.QueryText),
+                        HttpStatusCode.Created);
+
+                    transactionManager.Endpoint = transactionResponseMessage.Headers.Location;
+                }
+                else
+                {
+                    SendHttpRequest(
+                        HttpPostAsJson(transactionManager.Endpoint.AbsoluteUri, new CypherTransactionApiQuery(query)),
+                        string.Format("The query was: {0}", query.QueryText),
+                        HttpStatusCode.OK);
+                }
             }
             else
             {

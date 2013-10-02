@@ -90,5 +90,74 @@ namespace Neo4jClient.Test.GraphClientTests.Cypher
                 }
             }
         }
+
+        [Test]
+        public void ExecuteCypher_ShouldIncludeSecondCallWithinTransaction()
+        {
+            var cypherQuery1 = new CypherQuery("CYPHER", new Dictionary<string, object>(), CypherResultMode.Set);
+            var cypherApiQuery1 = new CypherTransactionApiQuery(cypherQuery1);
+
+            var cypherQuery2 = new CypherQuery("CYPHER2", new Dictionary<string, object>(), CypherResultMode.Set);
+            var cypherApiQuery2 = new CypherTransactionApiQuery(cypherQuery2);
+
+            using (var testHarness = new RestTestHarness
+            {
+                {
+                    MockRequest.PostObjectAsJson("/transaction", cypherApiQuery1),
+                    MockResponse.Json(
+                        HttpStatusCode.Created,
+                        @"
+                            {
+                                'commit' : 'http://foo/db/data/transaction/6/commit',
+                                'results' : [
+                                    {
+                                        'columns' : [ 'n' ],
+                                        'data' : [ { 'row' : [ {'name':'My Node'} ] } ]
+                                    }
+                                ],
+                                'transaction' : {
+                                    'expires' : 'Tue, 10 Sep 2013 10:54:04 +0000'
+                                },
+                                'errors' : [ ]
+                            }
+                        ",
+                        new Dictionary<string, string>
+                        {
+                            { "Location", "http://foo/db/data/transaction/6" }
+                        }
+                    )
+                },
+                {
+                    MockRequest.PostObjectAsJson("/transaction/6", cypherApiQuery2),
+                    MockResponse.Json(
+                        HttpStatusCode.OK,
+                        @"
+                            {
+                                'commit' : 'http://foo/db/data/transaction/6/commit',
+                                'results' : [
+                                    {
+                                        'columns' : [ 'n' ],
+                                        'data' : [ { 'row' : [ {'name':'My Node'} ] } ]
+                                    }
+                                ],
+                                'transaction' : {
+                                    'expires' : 'Tue, 10 Sep 2013 10:54:04 +0000'
+                                },
+                                'errors' : [ ]
+                            }
+                        "
+                    )
+                }
+            })
+            {
+                var graphClient = testHarness.CreateAndConnectGraphClient();
+
+                using (new TransactionScope())
+                {
+                    graphClient.ExecuteCypher(cypherQuery1);
+                    graphClient.ExecuteCypher(cypherQuery2);
+                }
+            }
+        }
     }
 }
