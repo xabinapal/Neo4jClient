@@ -263,6 +263,42 @@ namespace Neo4jClient.Test.GraphClientTests.Cypher
         }
 
         [Test]
+        public void ExecuteCypher_ShouldThrowAggregateExceptionWhenFirstStatementFailsForMultipleReasons()
+        {
+            var cypherQuery = new CypherQuery("CYPHER", new Dictionary<string, object>(), CypherResultMode.Set);
+            var cypherApiQuery = new CypherTransactionApiQuery(cypherQuery);
+
+            using (var testHarness = new RestTestHarness
+            {
+                {
+                    MockRequest.PostObjectAsJson("/transaction", cypherApiQuery),
+                    MockResponse.Json(
+                        HttpStatusCode.Created,
+                        @"
+                            {
+                                'commit' : 'http://foo/db/data/transaction/6/commit',
+                                'errors' : [
+                                    {'code':42001,'status':'STATEMENT_SYNTAX_ERROR','message':'Something broke'},
+                                    {'code':56789,'status':'STATEMENT_FOO_ERROR','message':'Something else broke'}
+                                ],
+                                'results' : []
+                            }
+                        "
+                    )
+                }
+            })
+            {
+                var graphClient = testHarness.CreateAndConnectGraphClient();
+
+                using (new TransactionScope())
+                {
+                    var aggregateException = Assert.Throws<AggregateException>(() => graphClient.ExecuteCypher(cypherQuery));
+                    Assert.AreEqual(2, aggregateException.InnerExceptions.Count);
+                }
+            }
+        }
+
+        [Test]
         public void ExecuteCypher_ShouldReleaseInternalTransactionWhenFirstStatementFails()
         {
             var cypherQuery = new CypherQuery("CYPHER", new Dictionary<string, object>(), CypherResultMode.Set);
