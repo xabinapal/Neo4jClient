@@ -869,9 +869,11 @@ namespace Neo4jClient
             HttpResponseMessage transactionResponseMessage,
             Transaction currentTransaction)
         {
+            var responseBody = transactionResponseMessage.Content.ReadAsJson<CypherTransactionApiResponse>(JsonConverters);
             var cypherTransaction = new CypherTransaction(this, localIdentifier)
             {
-                Endpoint = transactionResponseMessage.Headers.Location
+                Endpoint = transactionResponseMessage.Headers.Location,
+                CommitEndpoint = responseBody.Commit
             };
             activeCypherTransactions.TryAdd(localIdentifier, cypherTransaction);
             currentTransaction.EnlistVolatile(cypherTransaction, EnlistmentOptions.None);
@@ -887,6 +889,15 @@ namespace Neo4jClient
             SendHttpRequest(
                 HttpDelete(transaction.Endpoint.AbsoluteUri),
                 string.Format("Rolled back transaction {0}", transaction.Endpoint),
+                HttpStatusCode.OK);
+            ReleaseTransaction(transaction);
+        }
+
+        void ITransactionCoordinator.CommitTransaction(CypherTransaction transaction)
+        {
+            SendHttpRequest(
+                HttpPostAsJson(transaction.CommitEndpoint.AbsoluteUri, new CypherTransactionApiQuery()),
+                string.Format("Committed transaction {0}", transaction.Endpoint),
                 HttpStatusCode.OK);
             ReleaseTransaction(transaction);
         }

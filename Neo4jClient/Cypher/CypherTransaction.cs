@@ -18,6 +18,8 @@ namespace Neo4jClient.Cypher
 
         public Uri Endpoint { get; set; }
 
+        public Uri CommitEndpoint { get; set; }
+
         public string LocalIdentifier
         {
             get { return localIdentifier; }
@@ -25,10 +27,13 @@ namespace Neo4jClient.Cypher
 
         public void Prepare(PreparingEnlistment preparingEnlistment)
         {
+            preparingEnlistment.Prepared();
         }
 
         public void Commit(Enlistment enlistment)
         {
+            transactionCoordinator.CommitTransaction(this);
+            enlistment.Done();
         }
 
         public void Rollback(Enlistment enlistment)
