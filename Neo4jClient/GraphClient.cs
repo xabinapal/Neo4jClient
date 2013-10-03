@@ -40,7 +40,7 @@ namespace Neo4jClient
         bool jsonStreamingAvailable;
         readonly string userAgent;
 
-        internal readonly ConcurrentDictionary<string, CypherTransaction> ActiveCypherTransactions =
+        readonly ConcurrentDictionary<string, CypherTransaction> activeCypherTransactions =
             new ConcurrentDictionary<string, CypherTransaction>();
 
         public bool UseJsonStreamingIfAvailable { get; set; }
@@ -820,7 +820,7 @@ namespace Neo4jClient
             {
                 var localIdentifier = currentTransaction.TransactionInformation.LocalIdentifier;
                 CypherTransaction cypherTransaction;
-                var cypherTransactionAlreadyEstablished = ActiveCypherTransactions.TryGetValue(localIdentifier, out cypherTransaction);
+                var cypherTransactionAlreadyEstablished = activeCypherTransactions.TryGetValue(localIdentifier, out cypherTransaction);
 
                 if (!cypherTransactionAlreadyEstablished)
                 {
@@ -859,6 +859,11 @@ namespace Neo4jClient
             });
         }
 
+        IDictionary<string, CypherTransaction> ITransactionCoordinator.ActiveCypherTransactions
+        {
+            get { return activeCypherTransactions; }
+        }
+
         void RegisterTransaction(
             string localIdentifier,
             HttpResponseMessage transactionResponseMessage,
@@ -868,13 +873,13 @@ namespace Neo4jClient
             {
                 Endpoint = transactionResponseMessage.Headers.Location
             };
-            ActiveCypherTransactions.TryAdd(localIdentifier, cypherTransaction);
+            activeCypherTransactions.TryAdd(localIdentifier, cypherTransaction);
             currentTransaction.EnlistVolatile(cypherTransaction, EnlistmentOptions.None);
         }
 
         void ReleaseTransaction(CypherTransaction transaction)
         {
-            ActiveCypherTransactions.TryRemove(transaction.LocalIdentifier, out transaction);
+            activeCypherTransactions.TryRemove(transaction.LocalIdentifier, out transaction);
         }
 
         void ITransactionCoordinator.RollbackTransaction(CypherTransaction transaction)
