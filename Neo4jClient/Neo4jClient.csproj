@@ -90,6 +90,7 @@
     <Compile Include="Cypher\ReturnExpression.cs" />
     <Compile Include="Cypher\StartBit.cs" />
     <Compile Include="Cypher\StartBitFormatter.cs" />
+    <Compile Include="GraphClient.Cypher.cs" />
     <Compile Include="Serialization\DeserializationContext.cs" />
     <Compile Include="HttpClient.cs" />
     <Compile Include="HttpContentExtensions.cs" />
