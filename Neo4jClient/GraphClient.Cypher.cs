@@ -73,7 +73,14 @@ namespace Neo4jClient
             stopwatch.Start();
 
             var currentTransaction = Transaction.Current;
-            if (currentTransaction != null)
+            if (currentTransaction == null)
+            {
+                SendHttpRequest(
+                    HttpPostAsJson(RootApiResponse.Cypher, new CypherApiQuery(query)),
+                    string.Format("The query was: {0}", query.QueryText),
+                    HttpStatusCode.OK);
+            }
+            else
             {
                 var localIdentifier = currentTransaction.TransactionInformation.LocalIdentifier;
                 CypherTransaction cypherTransaction;
@@ -98,13 +105,6 @@ namespace Neo4jClient
                         string.Format("In existing transaction {0}, ran query: {1}", cypherTransaction.Endpoint, query.QueryText),
                         HttpStatusCode.OK);
                 }
-            }
-            else
-            {
-                SendHttpRequest(
-                    HttpPostAsJson(RootApiResponse.Cypher, new CypherApiQuery(query)),
-                    string.Format("The query was: {0}", query.QueryText),
-                    HttpStatusCode.OK);
             }
 
             stopwatch.Stop();
