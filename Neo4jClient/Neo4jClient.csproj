@@ -65,6 +65,8 @@
     <Compile Include="ApiModels\BatchStepResult.cs" />
     <Compile Include="ApiModels\Cypher\CypherTransactionApiQuery.cs" />
     <Compile Include="ApiModels\Cypher\CypherTransactionApiResponse.cs" />
+    <Compile Include="ApiModels\ErrorApiResponse.cs" />
+    <Compile Include="ApiModels\ErrorApiResponseExtensions.cs" />
     <Compile Include="ApiModels\NodeOrRelationshipApiResponse.cs" />
     <Compile Include="ApiModels\Cypher\CypherApiQuery.cs" />
     <Compile Include="ApiModels\Cypher\PathsResult.cs" />
@@ -91,6 +93,7 @@
     <Compile Include="Cypher\StartBit.cs" />
     <Compile Include="Cypher\StartBitFormatter.cs" />
     <Compile Include="GraphClient.Cypher.cs" />
+    <Compile Include="NeoServerException.cs" />
     <Compile Include="Serialization\DeserializationContext.cs" />
     <Compile Include="HttpClient.cs" />
     <Compile Include="HttpContentExtensions.cs" />

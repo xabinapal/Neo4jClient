@@ -8,6 +8,7 @@ using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Transactions;
+using Neo4jClient.ApiModels;
 using Neo4jClient.ApiModels.Cypher;
 using Neo4jClient.Cypher;
 using Neo4jClient.Serialization;
@@ -96,14 +97,19 @@ namespace Neo4jClient
                         string.Format("Established new transaction for query: {0}", query.QueryText),
                         HttpStatusCode.Created);
 
-                    RegisterTransaction(localIdentifier, transactionResponseMessage, currentTransaction);
+                    var responseBody = transactionResponseMessage.Content.ReadAsJson<CypherTransactionApiResponse>(JsonConverters);
+                    if (responseBody.Errors.Any()) throw responseBody.Errors.ToException();
+
+                    RegisterTransaction(localIdentifier, transactionResponseMessage, responseBody, currentTransaction);
                 }
                 else
                 {
-                    SendHttpRequest(
+                    var responseBody = SendHttpRequestAndParseResultAs<CypherTransactionApiResponse>(
                         HttpPostAsJson(cypherTransaction.Endpoint.AbsoluteUri, new CypherTransactionApiQuery(query)),
                         string.Format("In existing transaction {0}, ran query: {1}", cypherTransaction.Endpoint, query.QueryText),
                         HttpStatusCode.OK);
+
+                    if (responseBody.Errors.Any()) throw responseBody.Errors.ToException();
                 }
             }
 
@@ -124,13 +130,13 @@ namespace Neo4jClient
         void RegisterTransaction(
             string localIdentifier,
             HttpResponseMessage transactionResponseMessage,
+            CypherTransactionApiResponse transactionResponseBody,
             Transaction currentTransaction)
         {
-            var responseBody = transactionResponseMessage.Content.ReadAsJson<CypherTransactionApiResponse>(JsonConverters);
             var cypherTransaction = new CypherTransaction(this, localIdentifier)
             {
                 Endpoint = transactionResponseMessage.Headers.Location,
-                CommitEndpoint = responseBody.Commit
+                CommitEndpoint = transactionResponseBody.Commit
             };
             activeCypherTransactions.TryAdd(localIdentifier, cypherTransaction);
             currentTransaction.EnlistVolatile(cypherTransaction, EnlistmentOptions.None);

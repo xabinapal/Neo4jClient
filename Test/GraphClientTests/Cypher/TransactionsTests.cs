@@ -175,7 +175,7 @@ namespace Neo4jClient.Test.GraphClientTests.Cypher
         }
 
         [Test]
-        public void ExecuteCypher_ShouldRollbackTransaction()
+        public void ExecuteCypher_ShouldRollbackTransactionIfTheTransactionIsNeverCompleted()
         {
             var cypherQuery = new CypherQuery("CYPHER", new Dictionary<string, object>(), CypherResultMode.Set);
             var cypherApiQuery = new CypherTransactionApiQuery(cypherQuery);
@@ -221,6 +221,157 @@ namespace Neo4jClient.Test.GraphClientTests.Cypher
                 using (new TransactionScope())
                 {
                     graphClient.ExecuteCypher(cypherQuery);
+                }
+            }
+        }
+
+        [Test]
+        public void ExecuteCypher_ShouldThrowExceptionWhenFirstStatementFails()
+        {
+            var cypherQuery = new CypherQuery("CYPHER", new Dictionary<string, object>(), CypherResultMode.Set);
+            var cypherApiQuery = new CypherTransactionApiQuery(cypherQuery);
+
+            using (var testHarness = new RestTestHarness
+            {
+                {
+                    MockRequest.PostObjectAsJson("/transaction", cypherApiQuery),
+                    MockResponse.Json(
+                        HttpStatusCode.Created,
+                        @"
+                            {
+                                'commit' : 'http://foo/db/data/transaction/6/commit',
+                                'errors' : [
+                                    {'code':42001,'status':'STATEMENT_SYNTAX_ERROR','message':'Something broke'}
+                                ],
+                                'results' : []
+                            }
+                        "
+                    )
+                }
+            })
+            {
+                var graphClient = testHarness.CreateAndConnectGraphClient();
+
+                using (new TransactionScope())
+                {
+                    var neoServerException = Assert.Throws<NeoServerException>(() => graphClient.ExecuteCypher(cypherQuery));
+                    Assert.AreEqual("42001", neoServerException.Code);
+                    Assert.AreEqual("STATEMENT_SYNTAX_ERROR", neoServerException.Status);
+                    Assert.AreEqual("42001 STATEMENT_SYNTAX_ERROR Something broke", neoServerException.Message);
+                }
+            }
+        }
+
+        [Test]
+        public void ExecuteCypher_ShouldReleaseInternalTransactionWhenFirstStatementFails()
+        {
+            var cypherQuery = new CypherQuery("CYPHER", new Dictionary<string, object>(), CypherResultMode.Set);
+            var cypherApiQuery = new CypherTransactionApiQuery(cypherQuery);
+
+            using (var testHarness = new RestTestHarness
+            {
+                {
+                    MockRequest.PostObjectAsJson("/transaction", cypherApiQuery),
+                    MockResponse.Json(
+                        HttpStatusCode.Created,
+                        @"
+                            {
+                                'commit' : 'http://foo/db/data/transaction/6/commit',
+                                'errors' : [
+                                    {'code':42001,'status':'STATEMENT_SYNTAX_ERROR','message':'Something broke'}
+                                ],
+                                'results' : []
+                            }
+                        "
+                    )
+                }
+            })
+            {
+                var graphClient = testHarness.CreateAndConnectGraphClient();
+
+                try
+                {
+                    using (new TransactionScope())
+                    {
+                        graphClient.ExecuteCypher(cypherQuery);
+                    }
+                }
+                catch (NeoServerException)
+                {}
+
+                Assert.AreEqual(0, ((ITransactionCoordinator)graphClient).ActiveCypherTransactions.Count);
+            }
+        }
+
+        [Test]
+        public void ExecuteCypher_ShouldThrowExceptionAndRollbackWhenSecondStatementFails()
+        {
+            var cypherQuery1 = new CypherQuery("CYPHER", new Dictionary<string, object>(), CypherResultMode.Set);
+            var cypherApiQuery1 = new CypherTransactionApiQuery(cypherQuery1);
+
+            var cypherQuery2 = new CypherQuery("CYPHER2", new Dictionary<string, object>(), CypherResultMode.Set);
+            var cypherApiQuery2 = new CypherTransactionApiQuery(cypherQuery2);
+
+            using (var testHarness = new RestTestHarness
+            {
+                {
+                    MockRequest.PostObjectAsJson("/transaction", cypherApiQuery1),
+                    MockResponse.Json(
+                        HttpStatusCode.Created,
+                        @"
+                            {
+                                'commit' : 'http://foo/db/data/transaction/6/commit',
+                                'results' : [
+                                    {
+                                        'columns' : [ 'n' ],
+                                        'data' : [ { 'row' : [ {'name':'My Node'} ] } ]
+                                    }
+                                ],
+                                'transaction' : {
+                                    'expires' : 'Tue, 10 Sep 2013 10:54:04 +0000'
+                                },
+                                'errors' : [ ]
+                            }
+                        ",
+                        new Dictionary<string, string>
+                        {
+                            { "Location", "http://foo/db/data/transaction/6" }
+                        }
+                    )
+                },
+                {
+                    MockRequest.PostObjectAsJson("/transaction/6", cypherApiQuery2),
+                    MockResponse.Json(
+                        HttpStatusCode.OK,
+                        @"
+                            {
+                                'commit' : 'http://foo/db/data/transaction/6/commit',
+                                'errors' : [
+                                    {'code':42001,'status':'STATEMENT_SYNTAX_ERROR','message':'Something broke'}
+                                ],
+                                'results' : []
+                            }
+                        "
+                    )
+                },
+                {
+                    MockRequest.Delete("/transaction/6"),
+                    MockResponse.Json(
+                        HttpStatusCode.OK,
+                        @"{ 'results':[], 'errors':[] }"
+                    )
+                }
+            })
+            {
+                var graphClient = testHarness.CreateAndConnectGraphClient();
+
+                using (new TransactionScope())
+                {
+                    graphClient.ExecuteCypher(cypherQuery1);
+                    var neoServerException = Assert.Throws<NeoServerException>(() => graphClient.ExecuteCypher(cypherQuery2));
+                    Assert.AreEqual("42001", neoServerException.Code);
+                    Assert.AreEqual("STATEMENT_SYNTAX_ERROR", neoServerException.Status);
+                    Assert.AreEqual("42001 STATEMENT_SYNTAX_ERROR Something broke", neoServerException.Message);
                 }
             }
         }
