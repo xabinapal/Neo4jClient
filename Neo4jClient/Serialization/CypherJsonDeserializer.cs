@@ -69,7 +69,10 @@ Include this raw JSON, with any sensitive values replaced with non-sensitive equ
             };
             var root = JToken.ReadFrom(reader).Root;
 
-            var columnsArray = (JArray)root["columns"];
+            var isTransactionalResult = root["commit"] != null;
+            var columnsArray = (JArray)(isTransactionalResult ? root["results"][0]["columns"] : root["columns"]);
+            var dataArray = (JArray)(isTransactionalResult ? root["results"][0]["data"][0]["rest"] : root["data"]);
+
             var columnNames = columnsArray
                 .Children()
                 .Select(c => c.AsString())
@@ -106,7 +109,7 @@ Include this raw JSON, with any sensitive values replaced with non-sensitive equ
             switch (resultMode)
             {
                 case CypherResultMode.Set:
-                    return ParseInSingleColumnMode(context, root, columnNames, jsonTypeMappings.ToArray());
+                    return ParseInSingleColumnMode(context, dataArray, columnNames, jsonTypeMappings.ToArray());
                 case CypherResultMode.Projection:
                     jsonTypeMappings.Add(new TypeMapping
                     {
@@ -117,14 +120,14 @@ Include this raw JSON, with any sensitive values replaced with non-sensitive equ
                         MutationCallback = n =>
                             n.GetType().GetProperty("Data").GetGetMethod().Invoke(n, new object[0])
                     });
-                    return ParseInProjectionMode(context, root, columnNames, jsonTypeMappings.ToArray());
+                    return ParseInProjectionMode(context, dataArray, columnNames, jsonTypeMappings.ToArray());
                 default:
                     throw new NotSupportedException(string.Format("Unrecognised result mode of {0}.", resultMode));
             }
         }
 
 // ReSharper disable UnusedParameter.Local
-        IEnumerable<TResult> ParseInSingleColumnMode(DeserializationContext context, JToken root, string[] columnNames, TypeMapping[] jsonTypeMappings)
+        IEnumerable<TResult> ParseInSingleColumnMode(DeserializationContext context, JArray dataArray, string[] columnNames, TypeMapping[] jsonTypeMappings)
 // ReSharper restore UnusedParameter.Local
         {
             if (columnNames.Count() != 1)
@@ -137,7 +140,6 @@ Include this raw JSON, with any sensitive values replaced with non-sensitive equ
             var mapping = jsonTypeMappings.SingleOrDefault(m => m.ShouldTriggerForPropertyType(0, resultType));
             var newType = mapping == null ? resultType : mapping.DetermineTypeToParseJsonIntoBasedOnPropertyType(resultType);
 
-            var dataArray = (JArray)root["data"];
             var rows = dataArray.Children();
             var results = rows.Select(row =>
             {
@@ -171,7 +173,7 @@ Include this raw JSON, with any sensitive values replaced with non-sensitive equ
             return results;
         }
 
-        IEnumerable<TResult> ParseInProjectionMode(DeserializationContext context, JToken root, string[] columnNames, TypeMapping[] jsonTypeMappings)
+        IEnumerable<TResult> ParseInProjectionMode(DeserializationContext context, JArray dataArray, string[] columnNames, TypeMapping[] jsonTypeMappings)
         {
             var properties = typeof(TResult).GetProperties();
             var propertiesDictionary = properties
@@ -221,7 +223,6 @@ Include this raw JSON, with any sensitive values replaced with non-sensitive equ
                 getRow = token => ReadProjectionRowUsingProperties(context, token, propertiesDictionary, columnNames, jsonTypeMappings);
             }
 
-            var dataArray = (JArray)root["data"];
             var rows = dataArray.Children();
             var results = rows.Select(getRow);
 

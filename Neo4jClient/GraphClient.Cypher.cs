@@ -30,7 +30,15 @@ namespace Neo4jClient
         IEnumerable<TResult> IRawGraphClient.ExecuteGetCypherResults<TResult>(CypherQuery query)
         {
             var task = ((IRawGraphClient) this).ExecuteGetCypherResultsAsync<TResult>(query);
-            Task.WaitAll(task);
+            try
+            {
+                Task.WaitAll(task);
+            }
+            catch (AggregateException ex)
+            {
+                if (ex.InnerExceptions.Count == 1) throw ex.InnerExceptions[0];
+                throw;
+            }
             return task.Result;
         }
 
@@ -41,28 +49,80 @@ namespace Neo4jClient
             var stopwatch = new Stopwatch();
             stopwatch.Start();
 
+            var deserializer = new CypherJsonDeserializer<TResult>(this, query.ResultMode);
+
+            Func<string, IEnumerable<TResult>> parseAndFinalize = contentString =>
+            {
+                var results = deserializer.Deserialize(contentString).ToList();
+                stopwatch.Stop();
+                OnOperationCompleted(new OperationCompletedEventArgs
+                {
+                    QueryText = query.QueryText,
+                    ResourcesReturned = results.Count(),
+                    TimeTaken = stopwatch.Elapsed
+                });
+                return results;
+            };
+
+            var currentTransaction = Transaction.Current;
+            if (currentTransaction == null)
+            {
+                return
+                    SendHttpRequestAsync(
+                        HttpPostAsJson(RootApiResponse.Cypher, new CypherApiQuery(query)),
+                        string.Format("The query was: {0}", query.QueryText),
+                        HttpStatusCode.OK
+                    )
+                    .ContinueWith(responseTask =>
+                    {
+                        var response = responseTask.Result;
+                        var contentString = response.Content.ReadAsString();
+                        return parseAndFinalize(contentString);
+                    });
+            }
+
+            var localIdentifier = currentTransaction.TransactionInformation.LocalIdentifier;
+            CypherTransaction cypherTransaction;
+            var cypherTransactionAlreadyEstablished = activeCypherTransactions.TryGetValue(localIdentifier, out cypherTransaction);
+
+            if (!cypherTransactionAlreadyEstablished)
+            {
+                if (RootApiResponse.Transaction == null)
+                    throw new NotSupportedException("You're attempting to execute Cypher within a .NET transaction, however the Neo4j server you are talking to does not support this capability. This is available from Neo4j 2.0 onwards.");
+
+                return
+                    SendHttpRequestAsync(
+                        HttpPostAsJson(RootApiResponse.Transaction, new CypherTransactionApiQuery(query)),
+                        string.Format("Established new transaction for query: {0}", query.QueryText),
+                        HttpStatusCode.Created
+                    )
+                    .ContinueWith(responseTask =>
+                    {
+                        var result = responseTask.Result;
+                        var responseBody = result.Content.ReadAsJson<CypherTransactionApiResponse>(JsonConverters);
+                        if (responseBody.Errors.Any()) throw responseBody.Errors.ToException();
+
+                        RegisterTransaction(localIdentifier, result, responseBody, currentTransaction);
+
+                        var contentString = result.Content.ReadAsString();
+                        return parseAndFinalize(contentString);
+                    });
+            }
+
             return
                 SendHttpRequestAsync(
-                    HttpPostAsJson(RootApiResponse.Cypher, new CypherApiQuery(query)),
-                    string.Format("The query was: {0}", query.QueryText),
-                    HttpStatusCode.OK)
+                    HttpPostAsJson(cypherTransaction.Endpoint.AbsoluteUri, new CypherTransactionApiQuery(query)),
+                    string.Format("In existing transaction {0}, ran query: {1}", cypherTransaction.Endpoint, query.QueryText),
+                    HttpStatusCode.OK
+                )
                 .ContinueWith(responseTask =>
                 {
-                    var response = responseTask.Result;
-                    var deserializer = new CypherJsonDeserializer<TResult>(this, query.ResultMode);
-                    var results = deserializer
-                        .Deserialize(response.Content.ReadAsString())
-                        .ToList();
+                    var result = responseTask.Result;
+                    var responseBody = result.Content.ReadAsJson<CypherTransactionApiResponse>(JsonConverters);
+                    if (responseBody.Errors.Any()) throw responseBody.Errors.ToException();
 
-                    stopwatch.Stop();
-                    OnOperationCompleted(new OperationCompletedEventArgs
-                    {
-                        QueryText = query.QueryText,
-                        ResourcesReturned = results.Count(),
-                        TimeTaken = stopwatch.Elapsed
-                    });
-
-                    return (IEnumerable<TResult>)results;
+                    var contentString = result.Content.ReadAsString();
+                    return parseAndFinalize(contentString);
                 });
         }
 

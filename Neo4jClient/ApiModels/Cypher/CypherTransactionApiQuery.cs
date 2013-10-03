@@ -33,6 +33,15 @@ namespace Neo4jClient.ApiModels.Cypher
 
             [JsonProperty("parameters")]
             public IDictionary<string, object> Parameters;
+
+            [JsonProperty("resultDataContents")]
+            public IEnumerable<string> ResultDataContents
+            {
+                get
+                {
+                    return new[] { "REST" };
+                }
+            }
         }
     }
 }
