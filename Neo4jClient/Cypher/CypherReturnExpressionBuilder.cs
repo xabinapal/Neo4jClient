@@ -299,7 +299,7 @@ namespace Neo4jClient.Cypher
                 memberName = jsonProperty.PropertyName;
             if (string.IsNullOrWhiteSpace(memberName))
                 memberName = CypherFluentQuery.ApplyCamelCase(camelCaseProperties, memberInfo.Name);
-            Console.WriteLine(string.Format("{0}.{1}{2} AS {3}", targetObject.Name, memberName, optionalIndicator, targetMember.Name));
+
             return string.Format("{0}.{1}{2} AS {3}", targetObject.Name, memberName, optionalIndicator, targetMember.Name);
         }
 
