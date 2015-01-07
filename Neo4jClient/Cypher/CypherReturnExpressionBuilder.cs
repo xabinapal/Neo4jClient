@@ -292,7 +292,15 @@ namespace Neo4jClient.Cypher
                 if (isNullable) optionalIndicator = "?";
             }
 
-            return string.Format("{0}.{1}{2} AS {3}", targetObject.Name, CypherFluentQuery.ApplyCamelCase(camelCaseProperties, memberInfo.Name), optionalIndicator, targetMember.Name);
+            JsonPropertyAttribute[] jsonProperties = (JsonPropertyAttribute[])memberInfo.GetCustomAttributes(typeof(JsonPropertyAttribute), false);
+            JsonPropertyAttribute jsonProperty = jsonProperties.SingleOrDefault();
+            string memberName = null;
+            if (jsonProperty != null)
+                memberName = jsonProperty.PropertyName;
+            if (string.IsNullOrWhiteSpace(memberName))
+                memberName = CypherFluentQuery.ApplyCamelCase(camelCaseProperties, memberInfo.Name);
+            Console.WriteLine(string.Format("{0}.{1}{2} AS {3}", targetObject.Name, memberName, optionalIndicator, targetMember.Name));
+            return string.Format("{0}.{1}{2} AS {3}", targetObject.Name, memberName, optionalIndicator, targetMember.Name);
         }
 
         static string BuildStatement(
