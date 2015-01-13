@@ -6,6 +6,8 @@ using System.Text;
 
 namespace Neo4jClient.Cypher
 {
+    using Newtonsoft.Json;
+
     internal class CypherWhereExpressionVisitor : ExpressionVisitor
     {
         const string NotEqual = " <> ";
@@ -211,7 +213,15 @@ namespace Neo4jClient.Cypher
                 if (isNullable || propertyType == typeof (string)) nullIdentifier = "?";
             }
 
-            lastWrittenMemberName = string.Format("{0}.{1}{2}", identity, CypherFluentQuery.ApplyCamelCase(camelCaseProperties, node.Member.Name), nullIdentifier);
+            JsonPropertyAttribute[] jsonProperties = (JsonPropertyAttribute[])node.Member.GetCustomAttributes(typeof(JsonPropertyAttribute), false);
+            JsonPropertyAttribute jsonProperty = jsonProperties.SingleOrDefault();
+            string memberName = null;
+            if (jsonProperty != null)
+                memberName = jsonProperty.PropertyName;
+            if (string.IsNullOrWhiteSpace(memberName))
+                memberName = CypherFluentQuery.ApplyCamelCase(camelCaseProperties, node.Member.Name);
+
+            lastWrittenMemberName = string.Format("{0}.{1}{2}", identity, memberName, nullIdentifier);
             TextOutput.Append(lastWrittenMemberName);
         }
 
