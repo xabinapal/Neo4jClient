@@ -213,7 +213,7 @@ namespace Neo4jClient.Cypher
                 if (isNullable || propertyType == typeof (string)) nullIdentifier = "?";
             }
 
-            JsonPropertyAttribute[] jsonProperties = (JsonPropertyAttribute[])node.Member.GetCustomAttributes(typeof(JsonPropertyAttribute), false);
+            JsonPropertyAttribute[] jsonProperties = (JsonPropertyAttribute[])node.Member.GetCustomAttributes(typeof(JsonPropertyAttribute), true);
             JsonPropertyAttribute jsonProperty = jsonProperties.SingleOrDefault();
             string memberName = null;
             if (jsonProperty != null)
